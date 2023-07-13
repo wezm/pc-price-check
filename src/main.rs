@@ -4,15 +4,16 @@ use std::fmt::{self, Formatter};
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 enum Component {
-    Cpu,
-    Motherboard,
-    Graphics,
-    Memory,
-    Ssd,
     // Ssd2,
-    Case,
-    PowerSupply,
     CPUCooling,
+    Case,
+    Cpu,
+    Graphics,
+    Keyboard,
+    Memory,
+    Motherboard,
+    PowerSupply,
+    Ssd,
 }
 
 struct SearchResult {
@@ -36,6 +37,7 @@ async fn main() {
         (Case, "Fractal FD-C-TOR1A-03", 289_00),
         (PowerSupply, "Corsair CP-9020199-AU", 149_00),
         (CPUCooling, "Noctua NH-D15 CPU Cooler -NH-D15S", 146_00),
+        (Keyboard, "KBKCQ3N3BROWN", 279_00),
     ] {
         // We do them in sequence because StaticICE limits concurrent requests to 3
         let res = search(component, q).await;
@@ -85,15 +87,16 @@ async fn search(component: Component, q: &str) -> SearchResult {
 impl fmt::Display for Component {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            Component::Cpu => f.write_str("CPU"),
-            Component::Motherboard => f.write_str("Motherboard"),
-            Component::Graphics => f.write_str("Graphics"),
-            Component::Memory => f.write_str("Memory"),
-            Component::Ssd => f.write_str("Primary SSD"),
             // Component::Ssd2 => f.write_str("Aux SSD"),
-            Component::Case => f.write_str("Case"),
-            Component::PowerSupply => f.write_str("Power Supply"),
             Component::CPUCooling => f.write_str("CPU Cooler"),
+            Component::Case => f.write_str("Case"),
+            Component::Cpu => f.write_str("CPU"),
+            Component::Graphics => f.write_str("Graphics"),
+            Component::Keyboard => f.write_str("Keyboard"),
+            Component::Memory => f.write_str("Memory"),
+            Component::Motherboard => f.write_str("Motherboard"),
+            Component::PowerSupply => f.write_str("Power Supply"),
+            Component::Ssd => f.write_str("Primary SSD"),
         }
     }
 }
