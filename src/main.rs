@@ -1,10 +1,11 @@
 use scraper::{Html, Selector};
 use serde::Deserialize;
-use std::cmp::Ordering;
 use std::fmt::{self, Formatter};
 use std::path::Path;
 use std::{env, fs, io};
 use url::Url;
+
+const CONFIG: &str = "parts.toml";
 
 #[derive(Deserialize, Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
 enum ComponentType {
@@ -22,14 +23,14 @@ enum ComponentType {
     Other,
 }
 
-#[derive(Deserialize, Eq)]
+#[derive(Deserialize)]
 struct Component {
     component_type: ComponentType,
     query_string: String,
-    price: i32,
+    price: f32,
 }
 
-#[derive(Deserialize, Eq, PartialEq)]
+#[derive(Deserialize)]
 struct PartsList {
     parts: Vec<Component>,
 }
@@ -41,16 +42,18 @@ struct SearchResult {
 
 fn main() {
     let links = Selector::parse("a[href*='/cgi-bin/redirect.cgi'][alt]").unwrap();
-
-    let parts = match load_parts_list(Path::new("parts.toml")) {
+    let parts = match load_parts_list(Path::new(CONFIG)) {
         Ok(parts) => parts,
         Err(err) => {
-            eprintln!("unable to load parts.toml: {}", err);
-            return;
+            return eprintln!("unable to load {CONFIG} {err}");
         }
     };
     let mut components = parts.parts;
-    components.sort();
+    components.sort_by(|a, b| {
+        a.component_type
+            .cmp(&b.component_type)
+            .then(a.query_string.cmp(&b.query_string))
+    });
 
     if let Some("-l") = env::args_os()
         .skip(1)
@@ -84,22 +87,19 @@ fn main() {
             Some(el) => {
                 let price = el.text().collect::<String>();
                 let price = if price.starts_with('$') {
-                    let p = price[1..]
-                        .chars()
-                        .filter(|c| c.is_ascii_digit())
-                        .collect::<String>();
-                    p.parse::<i32>()
-                        .unwrap_or_else(|err| panic!("Unable to parse {}: {}", p, err))
+                    price[1..]
+                        .parse::<f32>()
+                        .unwrap_or_else(|err| panic!("Unable to parse {}: {}", &price[1..], err))
                 } else {
                     panic!("Price does not start with $");
                 };
                 let diff = price - reference;
                 let diff = match diff {
-                    _ if diff < 0 => format!(" \x1B[32m-${:.02}\x1B[m", diff.abs() as f64 / 100.), // green
-                    _ if diff > 0 => format!(" \x1B[31m+${:.02}\x1B[m ", diff as f64 / 100.), // red
-                    _ => String::new(), // zero
+                    _ if diff < 0. => format!(" \x1B[32m-${:.02}\x1B[m", diff.abs()), // green
+                    _ if diff > 0. => format!(" \x1B[31m+${:.02}\x1B[m ", diff),      // red
+                    _ => String::new(),                                               // zero
                 };
-                println!("    {}: ${:.02}{}", q, price as f64 / 100., diff)
+                println!("    {}: ${:.02}{}", q, price, diff)
             }
             None => println!("{}: No match: {}", res.component, doc.html()),
         }
@@ -142,26 +142,6 @@ impl fmt::Display for ComponentType {
     }
 }
 
-impl Ord for Component {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.component_type
-            .cmp(&other.component_type)
-            .then(self.query_string.cmp(&other.query_string))
-    }
-}
-
-impl PartialOrd for Component {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl PartialEq for Component {
-    fn eq(&self, other: &Self) -> bool {
-        self.component_type == other.component_type
-    }
-}
-
 fn load_parts_list(path: &Path) -> io::Result<PartsList> {
     let text = fs::read_to_string(path)?;
     Ok(toml::from_str::<PartsList>(&text).expect("unable to parse parts list"))
@@ -173,6 +153,6 @@ fn list_components(components: &[Component]) {
         let name = &item.query_string;
         let price = item.price;
 
-        println!("{}: {} - ${:.02}", component, name, price as f64 / 100.);
+        println!("{}: {} - ${:.02}", component, name, price);
     }
 }
