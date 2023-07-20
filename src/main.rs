@@ -65,22 +65,25 @@ fn main() {
     }
 
     let mut agent = ureq::agent();
+    let mut current_component = None;
+    for (i, item) in components.iter().enumerate() {
+        let Component {
+            component_type: component,
+            query: q,
+            price: reference,
+        } = item;
 
-    let mut current_type: ComponentType = components[0].component_type;
-    println!("\x1B[35m{}:\x1B[m", current_type);
-
-    for item in components {
-        let component = item.component_type;
-        let q = item.query;
-        let reference = item.price;
-
-        if current_type != component {
-            current_type = component;
-            println!("\n\x1B[35m{}:\x1B[m", current_type);
+        if current_component != Some(component) {
+            current_component = Some(component);
+            println!(
+                "{}\x1B[35m{}:\x1B[m",
+                if i == 0 { "" } else { "\n" },
+                component
+            );
         }
 
         // We do them in sequence because StaticICE limits concurrent requests to 3
-        let res = search(&mut agent, component, &q);
+        let res = search(&mut agent, *component, &q);
         let doc = Html::parse_document(&res.page);
 
         match doc.select(&links).next() {

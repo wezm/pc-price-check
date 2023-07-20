@@ -1,49 +1,49 @@
 [[parts]]
 component_type = "Cpu"
-query_string = "AMD Ryzen 9 7950X"
+query = "AMD Ryzen 9 7950X"
 price = 860.00
 
 [[parts]]
 component_type = "Motherboard"
-query_string = "Gigabyte X670 AORUS ELITE AX"
+query = "Gigabyte X670 AORUS ELITE AX"
 price = 450.00
 
 [[parts]]
 component_type = "Graphics"
-query_string = "Gigabyte Radeon RX 6700 XT EAGLE"
+query = "Gigabyte Radeon RX 6700 XT EAGLE"
 price = 478.00
 
 [[parts]]
 component_type = "Memory"
-query_string = "Corsair CMK32GX5M2D6000Z36"
+query = "Corsair CMK32GX5M2D6000Z36"
 price = 175.00
 
 [[parts]]
 component_type = "Ssd"
-query_string = "Crucial CT1000T700SSD3"
+query = "Crucial CT1000T700SSD3"
 price = 304.88
 
 [[parts]]
 component_type = "Hdd"
-query_string = "Western Digital WD Red Plus 8TB 3.5 NAS HDD"
+query = "Western Digital WD Red Plus 8TB 3.5 NAS HDD"
 price = 299.00
 
 [[parts]]
 component_type = "Hdd"
-query_string = "Seagate IronWolf NAS 8TB HDD"
+query = "Seagate IronWolf NAS 8TB HDD"
 price = 269.00
 
 [[parts]]
 component_type = "PowerSupply"
-query_string = "Corsair CP-9020199-AU"
+query = "Corsair CP-9020199-AU"
 price = 149.00
 
 [[parts]]
 component_type = "CPUCooling"
-query_string = "Noctua NH-D15 CPU Cooler -NH-D15S"
+query = "Noctua NH-D15 CPU Cooler -NH-D15S"
 price = 146.00
 
 [[parts]]
 component_type = "Keyboard"
-query_string = "KBKCQ3N3BROWN"
+query = "KBKCQ3N3BROWN"
 price = 279.00
