@@ -67,7 +67,7 @@ fn main() {
     let mut agent = ureq::agent();
 
     let mut current_type: ComponentType = components[0].component_type;
-    println!("{}:", current_type);
+    println!("\x1B[35m{}:\x1B[m", current_type);
 
     for item in components {
         let component = item.component_type;
@@ -76,7 +76,7 @@ fn main() {
 
         if current_type != component {
             current_type = component;
-            println!("{}:", current_type);
+            println!("\n\x1B[35m{}:\x1B[m", current_type);
         }
 
         // We do them in sequence because StaticICE limits concurrent requests to 3
