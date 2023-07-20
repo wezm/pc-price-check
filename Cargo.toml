@@ -6,6 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-reqwest = { version = "0.11.18", default-features = false, features = ["rustls-tls", "brotli"] }
 scraper = { version = "0.17.1", default-features = false, features = ["errors"] }
-tokio = { version = "1.29.1", default-features = false, features = ["rt", "macros"] }
+ureq = { version = "2.7.1", default-features = false, features = ["tls", "brotli"] }
+url = "2.4.0"
+

@@ -1,7 +1,7 @@
-use reqwest::Url;
 use scraper::{Html, Selector};
 use std::env;
 use std::fmt::{self, Formatter};
+use url::Url;
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 enum Component {
@@ -22,8 +22,7 @@ struct SearchResult {
     page: String,
 }
 
-#[tokio::main(flavor = "current_thread")]
-async fn main() {
+fn main() {
     use Component::*;
 
     let links = Selector::parse("a[href*='/cgi-bin/redirect.cgi'][alt]").unwrap();
@@ -50,9 +49,11 @@ async fn main() {
         return list_components(&components);
     }
 
+    let mut agent = ureq::agent();
+
     for (component, q, reference) in components {
         // We do them in sequence because StaticICE limits concurrent requests to 3
-        let res = search(component, q).await;
+        let res = search(&mut agent, component, q);
         let doc = Html::parse_document(&res.page);
 
         match doc.select(&links).next() {
@@ -81,18 +82,20 @@ async fn main() {
     }
 }
 
-async fn search(component: Component, q: &str) -> SearchResult {
+fn search(agent: &mut ureq::Agent, component: Component, q: &str) -> SearchResult {
     let url = Url::parse_with_params(
         "https://www.staticice.com.au/cgi-bin/search.cgi?spos=3",
         &[("q", q)],
     )
     .unwrap();
-    let resp = reqwest::get(url.clone()).await.unwrap();
-    if resp.status().is_success() {
-        let page = resp.text().await.unwrap();
-        SearchResult { component, page }
-    } else {
-        panic!("Unsuccessful request ({}) {}", resp.status().as_u16(), url)
+    match agent.get(url.as_str()).call() {
+        Ok(resp) => {
+            let page = resp.into_string().unwrap();
+            SearchResult { component, page }
+        }
+        Err(err) => {
+            panic!("Unsuccessful request ({}) {}", url, err)
+        }
     }
 }
 
