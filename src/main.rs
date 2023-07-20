@@ -4,7 +4,7 @@ use std::fmt::{self, Formatter};
 use url::Url;
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
-enum Component {
+enum ComponentType {
     // Ssd2,
     CPUCooling,
     Case,
@@ -18,12 +18,12 @@ enum Component {
 }
 
 struct SearchResult {
-    component: Component,
+    component: ComponentType,
     page: String,
 }
 
 fn main() {
-    use Component::*;
+    use ComponentType::*;
 
     let links = Selector::parse("a[href*='/cgi-bin/redirect.cgi'][alt]").unwrap();
 
@@ -82,7 +82,7 @@ fn main() {
     }
 }
 
-fn search(agent: &mut ureq::Agent, component: Component, q: &str) -> SearchResult {
+fn search(agent: &mut ureq::Agent, component: ComponentType, q: &str) -> SearchResult {
     let url = Url::parse_with_params(
         "https://www.staticice.com.au/cgi-bin/search.cgi?spos=3",
         &[("q", q)],
@@ -99,24 +99,24 @@ fn search(agent: &mut ureq::Agent, component: Component, q: &str) -> SearchResul
     }
 }
 
-impl fmt::Display for Component {
+impl fmt::Display for ComponentType {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             // Component::Ssd2 => f.write_str("Aux SSD"),
-            Component::CPUCooling => f.write_str("CPU Cooler"),
-            Component::Case => f.write_str("Case"),
-            Component::Cpu => f.write_str("CPU"),
-            Component::Graphics => f.write_str("Graphics"),
-            Component::Keyboard => f.write_str("Keyboard"),
-            Component::Memory => f.write_str("Memory"),
-            Component::Motherboard => f.write_str("Motherboard"),
-            Component::PowerSupply => f.write_str("Power Supply"),
-            Component::Ssd => f.write_str("Primary SSD"),
+            ComponentType::CPUCooling => f.write_str("CPU Cooler"),
+            ComponentType::Case => f.write_str("Case"),
+            ComponentType::Cpu => f.write_str("CPU"),
+            ComponentType::Graphics => f.write_str("Graphics"),
+            ComponentType::Keyboard => f.write_str("Keyboard"),
+            ComponentType::Memory => f.write_str("Memory"),
+            ComponentType::Motherboard => f.write_str("Motherboard"),
+            ComponentType::PowerSupply => f.write_str("Power Supply"),
+            ComponentType::Ssd => f.write_str("Primary SSD"),
         }
     }
 }
 
-fn list_components(components: &[(Component, &'static str, i32)]) {
+fn list_components(components: &[(ComponentType, &'static str, i32)]) {
     for (component, name, price) in components {
         println!("{}: {} - ${:.02}", component, name, *price as f64 / 100.);
     }
