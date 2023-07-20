@@ -17,7 +17,10 @@ enum ComponentType {
     Memory,
     Motherboard,
     PowerSupply,
+    Network,
     Ssd,
+    Hdd,
+    Other,
 }
 
 #[derive(Deserialize, Eq)]
@@ -135,7 +138,10 @@ impl fmt::Display for ComponentType {
             ComponentType::Memory => f.write_str("Memory"),
             ComponentType::Motherboard => f.write_str("Motherboard"),
             ComponentType::PowerSupply => f.write_str("Power Supply"),
+            ComponentType::Network => f.write_str("Network"),
             ComponentType::Ssd => f.write_str("Primary SSD"),
+            ComponentType::Hdd => f.write_str("Hard Drive"),
+            ComponentType::Other => f.write_str("Other"),
         }
     }
 }
