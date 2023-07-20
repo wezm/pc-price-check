@@ -60,10 +60,18 @@ fn main() {
 
     let mut agent = ureq::agent();
 
+    let mut current_type: ComponentType = components[0].component_type;
+    println!("{}:", current_type);
+
     for item in components {
         let component = item.component_type;
         let q = item.query_string;
         let reference = item.price;
+
+        if current_type != component {
+            current_type = component;
+            println!("{}:", current_type);
+        }
 
         // We do them in sequence because StaticICE limits concurrent requests to 3
         let res = search(&mut agent, component, &q);
@@ -88,7 +96,7 @@ fn main() {
                     _ if diff > 0 => format!(" \x1B[31m+${:.02}\x1B[m ", diff as f64 / 100.), // red
                     _ => String::new(), // zero
                 };
-                println!("{}: ${:.02}{}", res.component, price as f64 / 100., diff)
+                println!("    {}: ${:.02}{}", q, price as f64 / 100., diff)
             }
             None => println!("{}: No match: {}", res.component, doc.html()),
         }
