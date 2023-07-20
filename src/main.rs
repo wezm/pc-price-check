@@ -17,6 +17,12 @@ enum ComponentType {
     Ssd,
 }
 
+struct Component {
+    component_type: ComponentType,
+    query_string: String,
+    price: i32,
+}
+
 struct SearchResult {
     component: ComponentType,
     page: String,
@@ -28,16 +34,16 @@ fn main() {
     let links = Selector::parse("a[href*='/cgi-bin/redirect.cgi'][alt]").unwrap();
 
     let components = [
-        (Cpu, "AMD Ryzen 9 7950X", 860_00i32),
-        (Motherboard, "Gigabyte X670 AORUS ELITE AX", 450_00),
-        (Graphics, "Gigabyte Radeon RX 6700 XT EAGLE", 478_00),
-        (Memory, "Corsair CMK32GX5M2D6000Z36", 175_00),
-        (Ssd, "Crucial CT1000T700SSD3", 304_88),
+        Component{ component_type: Cpu, query_string: "AMD Ryzen 9 7950X".to_string(), price: 860_00i32 },
+        Component{ component_type: Motherboard, query_string: "Gigabyte X670 AORUS ELITE AX".to_string(), price: 450_00},
+        Component{ component_type: Graphics, query_string: "Gigabyte Radeon RX 6700 XT EAGLE".to_string(), price: 478_00},
+        Component{ component_type: Memory, query_string: "Corsair CMK32GX5M2D6000Z36".to_string(), price: 175_00},
+        Component{ component_type: Ssd, query_string: "Crucial CT1000T700SSD3".to_string(), price: 304_88},
         // (Ssd2, "CT2000P5PSSD8"),
-        (Case, "Fractal FD-C-TOR1A-03", 289_00),
-        (PowerSupply, "Corsair CP-9020199-AU", 149_00),
-        (CPUCooling, "Noctua NH-D15 CPU Cooler -NH-D15S", 146_00),
-        (Keyboard, "KBKCQ3N3BROWN", 279_00),
+        Component{ component_type: Case, query_string: "Fractal FD-C-TOR1A-03".to_string(), price: 289_00},
+        Component{ component_type: PowerSupply, query_string: "Corsair CP-9020199-AU".to_string(), price: 149_00},
+        Component{ component_type: CPUCooling, query_string: "Noctua NH-D15 CPU Cooler -NH-D15S".to_string(), price: 146_00},
+        Component{ component_type: Keyboard, query_string: "KBKCQ3N3BROWN".to_string(), price: 279_00},
     ];
 
     if let Some("-l") = env::args_os()
@@ -51,9 +57,13 @@ fn main() {
 
     let mut agent = ureq::agent();
 
-    for (component, q, reference) in components {
+    for item in components {
+        let component = item.component_type;
+        let q = item.query_string;
+        let reference = item.price;
+
         // We do them in sequence because StaticICE limits concurrent requests to 3
-        let res = search(&mut agent, component, q);
+        let res = search(&mut agent, component, &q);
         let doc = Html::parse_document(&res.page);
 
         match doc.select(&links).next() {
@@ -116,8 +126,12 @@ impl fmt::Display for ComponentType {
     }
 }
 
-fn list_components(components: &[(ComponentType, &'static str, i32)]) {
-    for (component, name, price) in components {
-        println!("{}: {} - ${:.02}", component, name, *price as f64 / 100.);
+fn list_components(components: &[Component]) {
+    for item in components {
+        let component = item.component_type;
+        let name = &item.query_string;
+        let price = item.price;
+
+        println!("{}: {} - ${:.02}", component, name, price as f64 / 100.);
     }
 }
