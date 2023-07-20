@@ -2,9 +2,11 @@ use scraper::{Html, Selector};
 use std::cmp::Ordering;
 use std::env;
 use std::fmt::{self, Formatter};
+use std::path::Path;
 use url::Url;
+use serde_derive::Deserialize;
 
-#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
+#[derive(Deserialize, Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
 enum ComponentType {
     // Ssd2,
     CPUCooling,
@@ -18,11 +20,16 @@ enum ComponentType {
     Ssd,
 }
 
-#[derive(Eq)]
+#[derive(Deserialize, Eq)]
 struct Component {
     component_type: ComponentType,
     query_string: String,
     price: i32,
+}
+
+#[derive(Deserialize, Eq, PartialEq)]
+struct PartsList {
+    parts: Vec<Component>,
 }
 
 struct SearchResult {
@@ -30,23 +37,19 @@ struct SearchResult {
     page: String,
 }
 
+fn load_parts_list(path: &Path) -> PartsList {
+    let text = std::fs::read_to_string(path).unwrap();
+    let parts: Result::<PartsList, _> = toml::from_str(&text);
+
+    parts.unwrap()
+}
+
 fn main() {
-    use ComponentType::*;
 
     let links = Selector::parse("a[href*='/cgi-bin/redirect.cgi'][alt]").unwrap();
 
-    let mut components = [
-        Component{ component_type: Cpu, query_string: "AMD Ryzen 9 7950X".to_string(), price: 860_00i32 },
-        Component{ component_type: Motherboard, query_string: "Gigabyte X670 AORUS ELITE AX".to_string(), price: 450_00},
-        Component{ component_type: Graphics, query_string: "Gigabyte Radeon RX 6700 XT EAGLE".to_string(), price: 478_00},
-        Component{ component_type: Memory, query_string: "Corsair CMK32GX5M2D6000Z36".to_string(), price: 175_00},
-        Component{ component_type: Ssd, query_string: "Crucial CT1000T700SSD3".to_string(), price: 304_88},
-        // (Ssd2, "CT2000P5PSSD8"),
-        Component{ component_type: Case, query_string: "Fractal FD-C-TOR1A-03".to_string(), price: 289_00},
-        Component{ component_type: PowerSupply, query_string: "Corsair CP-9020199-AU".to_string(), price: 149_00},
-        Component{ component_type: CPUCooling, query_string: "Noctua NH-D15 CPU Cooler -NH-D15S".to_string(), price: 146_00},
-        Component{ component_type: Keyboard, query_string: "KBKCQ3N3BROWN".to_string(), price: 279_00},
-    ];
+    let parts = load_parts_list(Path::new("parts.toml"));
+    let mut components = parts.parts;
     components.sort();
 
     if let Some("-l") = env::args_os()
