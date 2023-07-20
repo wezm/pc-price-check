@@ -1,9 +1,10 @@
 use scraper::{Html, Selector};
+use std::cmp::Ordering;
 use std::env;
 use std::fmt::{self, Formatter};
 use url::Url;
 
-#[derive(Debug, Eq, PartialEq, Copy, Clone)]
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
 enum ComponentType {
     // Ssd2,
     CPUCooling,
@@ -17,6 +18,7 @@ enum ComponentType {
     Ssd,
 }
 
+#[derive(Eq)]
 struct Component {
     component_type: ComponentType,
     query_string: String,
@@ -33,7 +35,7 @@ fn main() {
 
     let links = Selector::parse("a[href*='/cgi-bin/redirect.cgi'][alt]").unwrap();
 
-    let components = [
+    let mut components = [
         Component{ component_type: Cpu, query_string: "AMD Ryzen 9 7950X".to_string(), price: 860_00i32 },
         Component{ component_type: Motherboard, query_string: "Gigabyte X670 AORUS ELITE AX".to_string(), price: 450_00},
         Component{ component_type: Graphics, query_string: "Gigabyte Radeon RX 6700 XT EAGLE".to_string(), price: 478_00},
@@ -45,6 +47,7 @@ fn main() {
         Component{ component_type: CPUCooling, query_string: "Noctua NH-D15 CPU Cooler -NH-D15S".to_string(), price: 146_00},
         Component{ component_type: Keyboard, query_string: "KBKCQ3N3BROWN".to_string(), price: 279_00},
     ];
+    components.sort();
 
     if let Some("-l") = env::args_os()
         .skip(1)
@@ -123,6 +126,24 @@ impl fmt::Display for ComponentType {
             ComponentType::PowerSupply => f.write_str("Power Supply"),
             ComponentType::Ssd => f.write_str("Primary SSD"),
         }
+    }
+}
+
+impl Ord for Component {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.component_type.cmp(&other.component_type).then(self.query_string.cmp(&other.query_string))
+    }
+}
+
+impl PartialOrd for Component {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for Component {
+    fn eq(&self, other: &Self) -> bool {
+        self.component_type == other.component_type
     }
 }
 
