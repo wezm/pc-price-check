@@ -1,14 +1,13 @@
 use scraper::{Html, Selector};
+use serde::Deserialize;
 use std::cmp::Ordering;
-use std::env;
 use std::fmt::{self, Formatter};
 use std::path::Path;
+use std::{env, fs, io};
 use url::Url;
-use serde_derive::Deserialize;
 
 #[derive(Deserialize, Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
 enum ComponentType {
-    // Ssd2,
     CPUCooling,
     Case,
     Cpu,
@@ -40,18 +39,16 @@ struct SearchResult {
     page: String,
 }
 
-fn load_parts_list(path: &Path) -> PartsList {
-    let text = std::fs::read_to_string(path).unwrap();
-    let parts: Result::<PartsList, _> = toml::from_str(&text);
-
-    parts.unwrap()
-}
-
 fn main() {
-
     let links = Selector::parse("a[href*='/cgi-bin/redirect.cgi'][alt]").unwrap();
 
-    let parts = load_parts_list(Path::new("parts.toml"));
+    let parts = match load_parts_list(Path::new("parts.toml")) {
+        Ok(parts) => parts,
+        Err(err) => {
+            eprintln!("unable to load parts.toml: {}", err);
+            return;
+        }
+    };
     let mut components = parts.parts;
     components.sort();
 
@@ -129,7 +126,6 @@ fn search(agent: &mut ureq::Agent, component: ComponentType, q: &str) -> SearchR
 impl fmt::Display for ComponentType {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            // Component::Ssd2 => f.write_str("Aux SSD"),
             ComponentType::CPUCooling => f.write_str("CPU Cooler"),
             ComponentType::Case => f.write_str("Case"),
             ComponentType::Cpu => f.write_str("CPU"),
@@ -148,7 +144,9 @@ impl fmt::Display for ComponentType {
 
 impl Ord for Component {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.component_type.cmp(&other.component_type).then(self.query_string.cmp(&other.query_string))
+        self.component_type
+            .cmp(&other.component_type)
+            .then(self.query_string.cmp(&other.query_string))
     }
 }
 
@@ -162,6 +160,11 @@ impl PartialEq for Component {
     fn eq(&self, other: &Self) -> bool {
         self.component_type == other.component_type
     }
+}
+
+fn load_parts_list(path: &Path) -> io::Result<PartsList> {
+    let text = fs::read_to_string(path)?;
+    Ok(toml::from_str::<PartsList>(&text).expect("unable to parse parts list"))
 }
 
 fn list_components(components: &[Component]) {
