@@ -26,7 +26,7 @@ enum ComponentType {
 #[derive(Deserialize)]
 struct Component {
     component_type: ComponentType,
-    query_string: String,
+    query: String,
     price: f32,
 }
 
@@ -52,7 +52,7 @@ fn main() {
     components.sort_by(|a, b| {
         a.component_type
             .cmp(&b.component_type)
-            .then(a.query_string.cmp(&b.query_string))
+            .then(a.query.cmp(&b.query))
     });
 
     if let Some("-l") = env::args_os()
@@ -71,7 +71,7 @@ fn main() {
 
     for item in components {
         let component = item.component_type;
-        let q = item.query_string;
+        let q = item.query;
         let reference = item.price;
 
         if current_type != component {
@@ -150,7 +150,7 @@ fn load_parts_list(path: &Path) -> io::Result<PartsList> {
 fn list_components(components: &[Component]) {
     for item in components {
         let component = item.component_type;
-        let name = &item.query_string;
+        let name = &item.query;
         let price = item.price;
 
         println!("{}: {} - ${:.02}", component, name, price);
