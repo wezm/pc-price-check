@@ -1,10 +1,13 @@
 use scraper::{Html, Selector};
+use std::cmp::Ordering;
 use std::env;
 use std::fmt::{self, Formatter};
+use std::path::Path;
 use url::Url;
+use serde_derive::Deserialize;
 
-#[derive(Debug, Eq, PartialEq, Copy, Clone)]
-enum Component {
+#[derive(Deserialize, Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
+enum ComponentType {
     // Ssd2,
     CPUCooling,
     Case,
@@ -14,31 +17,43 @@ enum Component {
     Memory,
     Motherboard,
     PowerSupply,
+    Network,
     Ssd,
+    Hdd,
+    Other,
+}
+
+#[derive(Deserialize, Eq)]
+struct Component {
+    component_type: ComponentType,
+    query_string: String,
+    price: i32,
+}
+
+#[derive(Deserialize, Eq, PartialEq)]
+struct PartsList {
+    parts: Vec<Component>,
 }
 
 struct SearchResult {
-    component: Component,
+    component: ComponentType,
     page: String,
 }
 
+fn load_parts_list(path: &Path) -> PartsList {
+    let text = std::fs::read_to_string(path).unwrap();
+    let parts: Result::<PartsList, _> = toml::from_str(&text);
+
+    parts.unwrap()
+}
+
 fn main() {
-    use Component::*;
 
     let links = Selector::parse("a[href*='/cgi-bin/redirect.cgi'][alt]").unwrap();
 
-    let components = [
-        (Cpu, "AMD Ryzen 9 7950X", 860_00i32),
-        (Motherboard, "Gigabyte X670 AORUS ELITE AX", 450_00),
-        (Graphics, "Gigabyte Radeon RX 6700 XT EAGLE", 478_00),
-        (Memory, "Corsair CMK32GX5M2D6000Z36", 175_00),
-        (Ssd, "Crucial CT1000T700SSD3", 304_88),
-        // (Ssd2, "CT2000P5PSSD8"),
-        (Case, "Fractal FD-C-TOR1A-03", 289_00),
-        (PowerSupply, "Corsair CP-9020199-AU", 149_00),
-        (CPUCooling, "Noctua NH-D15 CPU Cooler -NH-D15S", 146_00),
-        (Keyboard, "KBKCQ3N3BROWN", 279_00),
-    ];
+    let parts = load_parts_list(Path::new("parts.toml"));
+    let mut components = parts.parts;
+    components.sort();
 
     if let Some("-l") = env::args_os()
         .skip(1)
@@ -51,9 +66,21 @@ fn main() {
 
     let mut agent = ureq::agent();
 
-    for (component, q, reference) in components {
+    let mut current_type: ComponentType = components[0].component_type;
+    println!("{}:", current_type);
+
+    for item in components {
+        let component = item.component_type;
+        let q = item.query_string;
+        let reference = item.price;
+
+        if current_type != component {
+            current_type = component;
+            println!("{}:", current_type);
+        }
+
         // We do them in sequence because StaticICE limits concurrent requests to 3
-        let res = search(&mut agent, component, q);
+        let res = search(&mut agent, component, &q);
         let doc = Html::parse_document(&res.page);
 
         match doc.select(&links).next() {
@@ -75,14 +102,14 @@ fn main() {
                     _ if diff > 0 => format!(" \x1B[31m+${:.02}\x1B[m ", diff as f64 / 100.), // red
                     _ => String::new(), // zero
                 };
-                println!("{}: ${:.02}{}", res.component, price as f64 / 100., diff)
+                println!("    {}: ${:.02}{}", q, price as f64 / 100., diff)
             }
             None => println!("{}: No match: {}", res.component, doc.html()),
         }
     }
 }
 
-fn search(agent: &mut ureq::Agent, component: Component, q: &str) -> SearchResult {
+fn search(agent: &mut ureq::Agent, component: ComponentType, q: &str) -> SearchResult {
     let url = Url::parse_with_params(
         "https://www.staticice.com.au/cgi-bin/search.cgi?spos=3",
         &[("q", q)],
@@ -99,25 +126,50 @@ fn search(agent: &mut ureq::Agent, component: Component, q: &str) -> SearchResul
     }
 }
 
-impl fmt::Display for Component {
+impl fmt::Display for ComponentType {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             // Component::Ssd2 => f.write_str("Aux SSD"),
-            Component::CPUCooling => f.write_str("CPU Cooler"),
-            Component::Case => f.write_str("Case"),
-            Component::Cpu => f.write_str("CPU"),
-            Component::Graphics => f.write_str("Graphics"),
-            Component::Keyboard => f.write_str("Keyboard"),
-            Component::Memory => f.write_str("Memory"),
-            Component::Motherboard => f.write_str("Motherboard"),
-            Component::PowerSupply => f.write_str("Power Supply"),
-            Component::Ssd => f.write_str("Primary SSD"),
+            ComponentType::CPUCooling => f.write_str("CPU Cooler"),
+            ComponentType::Case => f.write_str("Case"),
+            ComponentType::Cpu => f.write_str("CPU"),
+            ComponentType::Graphics => f.write_str("Graphics"),
+            ComponentType::Keyboard => f.write_str("Keyboard"),
+            ComponentType::Memory => f.write_str("Memory"),
+            ComponentType::Motherboard => f.write_str("Motherboard"),
+            ComponentType::PowerSupply => f.write_str("Power Supply"),
+            ComponentType::Network => f.write_str("Network"),
+            ComponentType::Ssd => f.write_str("Primary SSD"),
+            ComponentType::Hdd => f.write_str("Hard Drive"),
+            ComponentType::Other => f.write_str("Other"),
         }
     }
 }
 
-fn list_components(components: &[(Component, &'static str, i32)]) {
-    for (component, name, price) in components {
-        println!("{}: {} - ${:.02}", component, name, *price as f64 / 100.);
+impl Ord for Component {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.component_type.cmp(&other.component_type).then(self.query_string.cmp(&other.query_string))
+    }
+}
+
+impl PartialOrd for Component {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for Component {
+    fn eq(&self, other: &Self) -> bool {
+        self.component_type == other.component_type
+    }
+}
+
+fn list_components(components: &[Component]) {
+    for item in components {
+        let component = item.component_type;
+        let name = &item.query_string;
+        let price = item.price;
+
+        println!("{}: {} - ${:.02}", component, name, price as f64 / 100.);
     }
 }
