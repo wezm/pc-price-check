@@ -1,8 +1,10 @@
-use scraper::{Html, Selector};
-use serde::Deserialize;
 use std::fmt::{self, Formatter};
 use std::path::Path;
-use std::{env, fs, io};
+use std::{env, fs};
+
+use anyhow::{bail, Context};
+use scraper::{Html, Selector};
+use serde::Deserialize;
 use url::Url;
 
 const CONFIG: &str = "parts.toml";
@@ -40,14 +42,10 @@ struct SearchResult {
     page: String,
 }
 
-fn main() {
+fn main() -> anyhow::Result<()> {
+    // NOTE(unwrap): Safe as selector to known to be valid
     let links = Selector::parse("a[href*='/cgi-bin/redirect.cgi'][alt]").unwrap();
-    let parts = match load_parts_list(Path::new(CONFIG)) {
-        Ok(parts) => parts,
-        Err(err) => {
-            return eprintln!("unable to load {CONFIG} {err}");
-        }
-    };
+    let parts = load_parts_list(Path::new(CONFIG))?;
     let mut components = parts.parts;
     components.sort_by(|a, b| {
         a.component_type
@@ -61,7 +59,8 @@ fn main() {
         .as_deref()
         .and_then(|s| s.to_str())
     {
-        return list_components(&components);
+        list_components(&components);
+        return Ok(());
     }
 
     let mut agent = ureq::agent();
@@ -83,18 +82,18 @@ fn main() {
         }
 
         // We do them in sequence because StaticICE limits concurrent requests to 3
-        let res = search(&mut agent, *component, &q);
+        let res = search(&mut agent, *component, q)?;
         let doc = Html::parse_document(&res.page);
 
         match doc.select(&links).next() {
             Some(el) => {
                 let price = el.text().collect::<String>();
-                let price = if price.starts_with('$') {
-                    price[1..]
+                let price = if let Some(price) = price.strip_prefix('$') {
+                    price
                         .parse::<f32>()
-                        .unwrap_or_else(|err| panic!("Unable to parse {}: {}", &price[1..], err))
+                        .with_context(|| format!("Unable to parse {}", price))?
                 } else {
-                    panic!("Price does not start with $");
+                    bail!("Price does not start with $");
                 };
                 let diff = price - reference;
                 let diff = match diff {
@@ -107,23 +106,21 @@ fn main() {
             None => println!("{}: No match: {}", res.component, doc.html()),
         }
     }
+
+    Ok(())
 }
 
-fn search(agent: &mut ureq::Agent, component: ComponentType, q: &str) -> SearchResult {
+fn search(
+    agent: &mut ureq::Agent,
+    component: ComponentType,
+    q: &str,
+) -> anyhow::Result<SearchResult> {
     let url = Url::parse_with_params(
         "https://www.staticice.com.au/cgi-bin/search.cgi?spos=3",
         &[("q", q)],
-    )
-    .unwrap();
-    match agent.get(url.as_str()).call() {
-        Ok(resp) => {
-            let page = resp.into_string().unwrap();
-            SearchResult { component, page }
-        }
-        Err(err) => {
-            panic!("Unsuccessful request ({}) {}", url, err)
-        }
-    }
+    )?;
+    let page = agent.get(url.as_str()).call()?.into_string()?;
+    Ok(SearchResult { component, page })
 }
 
 impl fmt::Display for ComponentType {
@@ -145,9 +142,10 @@ impl fmt::Display for ComponentType {
     }
 }
 
-fn load_parts_list(path: &Path) -> io::Result<PartsList> {
-    let text = fs::read_to_string(path)?;
-    Ok(toml::from_str::<PartsList>(&text).expect("unable to parse parts list"))
+fn load_parts_list(path: &Path) -> anyhow::Result<PartsList> {
+    let text = fs::read_to_string(path).with_context(|| format!("unable to read {CONFIG}"))?;
+    let list = toml::from_str::<PartsList>(&text).with_context(|| "unable to parse parts list")?;
+    Ok(list)
 }
 
 fn list_components(components: &[Component]) {

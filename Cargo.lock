@@ -30,6 +30,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "anyhow"
+version = "1.0.72"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3b13c32d80ecc7ab747b80c3784bce54ee8a7a0cc4fbda9bf4cda2cf6fe90854"
+
+[[package]]
 name = "autocfg"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -326,6 +332,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "pc-price-check"
+version = "0.3.0"
+dependencies = [
+ "anyhow",
+ "scraper",
+ "serde",
+ "toml",
+ "ureq",
+ "url",
+]
+
+[[package]]
 name = "percent-encoding"
 version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -422,17 +440,6 @@ name = "precomputed-hash"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "925383efa346730478fb4838dbe9137d2a47675ad789c546d150a6e1dd4ab31c"
-
-[[package]]
-name = "price-check"
-version = "0.2.0"
-dependencies = [
- "scraper",
- "serde",
- "toml",
- "ureq",
- "url",
-]
 
 [[package]]
 name = "proc-macro2"
