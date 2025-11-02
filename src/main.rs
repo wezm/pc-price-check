@@ -62,12 +62,17 @@ fn main() -> anyhow::Result<()> {
                     bail!("Price does not start with $");
                 };
                 let diff = price - reference;
-                let diff = match diff {
+                let diff_fmt = match diff {
                     _ if diff < 0. => format!(" \x1B[32m-${:.02}\x1B[m", diff.abs()), // green
                     _ if diff > 0. => format!(" \x1B[31m+${:.02}\x1B[m ", diff),      // red
                     _ => String::new(),                                               // zero
                 };
-                println!("    {}: ${:.02}{}", q, price, diff)
+                let reffmt = if diff != 0.0 {
+                    format!("\t\x1B[2m(${:.02})\x1B[m", reference)
+                } else {
+                    String::new()
+                };
+                println!("    {}: ${:.02}{}{}", q, price, diff_fmt, reffmt)
             }
             None => println!("{}: No match: {}", res.component, doc.html()),
         }
