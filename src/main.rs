@@ -1,46 +1,12 @@
-use std::fmt::{self, Formatter};
 use std::path::Path;
 use std::{env, fs};
 
 use anyhow::{bail, Context};
+use pc_price_check::{Component, ComponentType, PartsList, SearchResult};
 use scraper::{Html, Selector};
-use serde::Deserialize;
 use url::Url;
 
 const CONFIG: &str = "parts.toml";
-
-#[derive(Deserialize, Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
-enum ComponentType {
-    CPUCooling,
-    Case,
-    Cpu,
-    Graphics,
-    Keyboard,
-    Memory,
-    Motherboard,
-    PowerSupply,
-    Network,
-    Ssd,
-    Hdd,
-    Other,
-}
-
-#[derive(Deserialize)]
-struct Component {
-    component_type: ComponentType,
-    query: String,
-    price: f32,
-}
-
-#[derive(Deserialize)]
-struct PartsList {
-    parts: Vec<Component>,
-}
-
-struct SearchResult {
-    component: ComponentType,
-    page: String,
-}
 
 fn main() -> anyhow::Result<()> {
     // NOTE(unwrap): Safe as selector to known to be valid
@@ -82,7 +48,7 @@ fn main() -> anyhow::Result<()> {
         }
 
         // We do them in sequence because StaticICE limits concurrent requests to 3
-        let res = search(&mut agent, *component, q)?;
+        let res = search(&mut agent, component, q)?;
         let doc = Html::parse_document(&res.page);
 
         match doc.select(&links).next() {
@@ -110,36 +76,17 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn search(
+fn search<'a>(
     agent: &mut ureq::Agent,
-    component: ComponentType,
+    component: &'a ComponentType,
     q: &str,
-) -> anyhow::Result<SearchResult> {
+) -> anyhow::Result<SearchResult<'a>> {
     let url = Url::parse_with_params(
         "https://www.staticice.com.au/cgi-bin/search.cgi?spos=3",
         &[("q", q)],
     )?;
     let page = agent.get(url.as_str()).call()?.into_string()?;
     Ok(SearchResult { component, page })
-}
-
-impl fmt::Display for ComponentType {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            ComponentType::CPUCooling => f.write_str("CPU Cooler"),
-            ComponentType::Case => f.write_str("Case"),
-            ComponentType::Cpu => f.write_str("CPU"),
-            ComponentType::Graphics => f.write_str("Graphics"),
-            ComponentType::Keyboard => f.write_str("Keyboard"),
-            ComponentType::Memory => f.write_str("Memory"),
-            ComponentType::Motherboard => f.write_str("Motherboard"),
-            ComponentType::PowerSupply => f.write_str("Power Supply"),
-            ComponentType::Network => f.write_str("Network"),
-            ComponentType::Ssd => f.write_str("Primary SSD"),
-            ComponentType::Hdd => f.write_str("Hard Drive"),
-            ComponentType::Other => f.write_str("Other"),
-        }
-    }
 }
 
 fn load_parts_list(path: &Path) -> anyhow::Result<PartsList> {
@@ -150,7 +97,7 @@ fn load_parts_list(path: &Path) -> anyhow::Result<PartsList> {
 
 fn list_components(components: &[Component]) {
     for item in components {
-        let component = item.component_type;
+        let component = &item.component_type;
         let name = &item.query;
         let price = item.price;
 
