@@ -11,7 +11,13 @@ const CONFIG: &str = "parts.toml";
 fn main() -> anyhow::Result<()> {
     // NOTE(unwrap): Safe as selector to known to be valid
     let links = Selector::parse("a[href*='/cgi-bin/redirect.cgi'][alt]").unwrap();
-    let parts = load_parts_list(Path::new(CONFIG))?;
+
+    let parts = if let Some(config_path) = env::args_os().nth(1) {
+        load_parts_list(Path::new(&config_path))?
+    } else {
+        load_parts_list(Path::new(CONFIG))?
+    };
+
     let mut components = parts.parts;
     components.sort_by(|a, b| {
         a.component_type
